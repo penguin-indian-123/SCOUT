@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOUT — Scoring with Clinical Vocabulary and Neighbor Distance</title>
+<meta name="description" content="Scoring with Clinical Vocabulary and Neighbor Distance — a training-free OOD detector for medical vision-language models, as drafted for ISBI.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩺</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ink:#201e1b; --ink-soft:#4a453f; --muted:#6f6a63; --faint:#9a948b;
+    --paper:#faf8f4; --paper-raised:#ffffff; --rule:#ddd7cc; --rule-strong:#b9b1a2;
+    --accent:#8a3324; --accent-soft:#f3e4df;
+    --vis:#2f5d8a; --vis-soft:#e7eef5;
+    --vocab:#8a3324; --vocab-soft:#f3e4df;
+    --good:#3c6e47; --bad:#a33a2a;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#ece8e1; --ink-soft:#c9c3b8; --muted:#a39d92; --faint:#766f64;
+      --paper:#17150f; --paper-raised:#1f1c15; --rule:#3a352a; --rule-strong:#55503f;
+      --accent:#d98468; --accent-soft:#2c1d17;
+      --vis:#7aa7d4; --vis-soft:#17212c;
+      --vocab:#d98468; --vocab-soft:#2c1d17;
+      --good:#7fbf8d; --bad:#e2846f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#ece8e1; --ink-soft:#c9c3b8; --muted:#a39d92; --faint:#766f64;
+    --paper:#17150f; --paper-raised:#1f1c15; --rule:#3a352a; --rule-strong:#55503f;
+    --accent:#d98468; --accent-soft:#2c1d17;
+    --vis:#7aa7d4; --vis-soft:#17212c;
+    --vocab:#d98468; --vocab-soft:#2c1d17;
+    --good:#7fbf8d; --bad:#e2846f;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+       font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent-soft);color:var(--accent)}
+  img{max-width:100%}
+
+  .page{max-width:760px;margin:0 auto;padding:64px 24px 100px}
+
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;
+          color:var(--accent);margin:0 0 18px;display:flex;align-items:center;gap:10px}
+  .kicker::before{content:"";width:22px;height:1px;background:var(--accent)}
+
+  h1{font-size:30px;line-height:1.28;font-weight:600;letter-spacing:-.01em;margin:0 0 14px;
+     text-wrap:balance;max-width:21ch}
+  .subtitle{font-size:16.5px;color:var(--ink-soft);margin:0 0 26px;max-width:58ch;text-wrap:balance}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--mono);font-size:11.5px;
+            color:var(--muted);padding-bottom:30px;margin-bottom:38px;border-bottom:1px solid var(--rule)}
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);
+     font-family:var(--mono);font-weight:600;margin:0 0 4px}
+  h2 .num{color:var(--faint);margin-right:8px}
+  .section-sub{font-size:21px;font-weight:600;color:var(--ink);margin:2px 0 18px;letter-spacing:-.005em}
+  section{margin:54px 0}
+  section:first-of-type{margin-top:0}
+
+  p{margin:0 0 15px;max-width:65ch}
+  .lede{font-size:17.5px;color:var(--ink-soft)}
+  .note{font-size:14px;color:var(--muted);line-height:1.58}
+  b{font-weight:600}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+
+  .abstract{background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;
+            padding:26px 28px;margin-top:8px}
+  .abstract .label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--faint);margin-bottom:10px}
+  .abstract p{font-size:15.5px;margin-bottom:0;max-width:none;color:var(--ink-soft)}
+  .headline-stats{display:flex;gap:0;margin-top:20px;border-top:1px solid var(--rule);padding-top:18px}
+  .headline-stats div{flex:1;padding-right:18px}
+  .headline-stats div + div{border-left:1px solid var(--rule);padding-left:18px}
+  .headline-stats .v{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--ink);
+                      font-variant-numeric:tabular-nums}
+  .headline-stats .l{font-size:12.5px;color:var(--muted);margin-top:3px}
+
+  .eq{display:flex;align-items:center;gap:18px;margin:20px 0;padding:14px 0}
+  .eq-body{flex:1;font-family:var(--mono);font-size:14.5px;background:var(--paper-raised);
+           border:1px solid var(--rule);border-radius:3px;padding:14px 18px;overflow-x:auto}
+  .eq-num{font-family:var(--mono);font-size:12.5px;color:var(--faint);flex:none;width:32px;text-align:right}
+
+  .branches{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+  @media (max-width:620px){.branches{grid-template-columns:1fr}}
+  .branch{border-radius:3px;padding:20px 22px;border:1px solid var(--rule)}
+  .branch.vis{background:var(--vis-soft);border-color:color-mix(in srgb, var(--vis) 35%, var(--rule))}
+  .branch.vocab{background:var(--vocab-soft);border-color:color-mix(in srgb, var(--vocab) 35%, var(--rule))}
+  .branch .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+               font-weight:600;margin-bottom:10px}
+  .branch.vis .tag{color:var(--vis)}
+  .branch.vocab .tag{color:var(--vocab)}
+  .branch h3{font-size:16.5px;margin:0 0 8px;font-weight:600}
+  .branch p{font-size:14px;color:var(--ink-soft);margin-bottom:10px;max-width:none}
+  .branch .formula{font-family:var(--mono);font-size:13px;font-weight:600}
+  .branch.vis .formula{color:var(--vis)}
+  .branch.vocab .formula{color:var(--vocab)}
+
+  .fusion-rule{text-align:center;margin:26px auto 0;max-width:420px;border:1.5px solid var(--ink);
+               border-radius:3px;padding:16px 20px;background:var(--paper-raised)}
+  .fusion-rule .formula{font-family:var(--mono);font-size:16px;font-weight:700}
+  .fusion-rule .caption{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+  .termsets{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media (max-width:620px){.termsets{grid-template-columns:1fr}}
+  .termset{border:1px solid var(--rule);border-radius:3px;padding:18px 20px;background:var(--paper-raised)}
+  .termset .th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+               font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+  .termset.known .th{color:var(--vis)}
+  .termset.unseen .th{color:var(--vocab)}
+  .termset .th::before{content:"";width:7px;height:7px;border-radius:50%}
+  .termset.known .th::before{background:var(--vis)}
+  .termset.unseen .th::before{background:var(--vocab)}
+  .termset ul{margin:0;padding:0;list-style:none;font-size:13.8px;color:var(--ink-soft)}
+  .termset li{padding:4.5px 0;border-bottom:1px dotted var(--rule)}
+  .termset li:last-child{border-bottom:none}
+
+  .tablewrap{overflow-x:auto;margin:18px 0 8px;border:1px solid var(--rule);border-radius:3px}
+  table{border-collapse:collapse;width:100%;font-size:13.3px;font-variant-numeric:tabular-nums;
+        font-family:var(--mono)}
+  caption{caption-side:top;text-align:left;font-family:var(--serif);font-size:14.5px;font-weight:600;
+          color:var(--ink);padding:14px 16px 4px;background:var(--paper-raised)}
+  caption .tnum{font-family:var(--mono);color:var(--accent);margin-right:8px;font-weight:700}
+  thead tr:first-child th{background:var(--paper-raised);font-family:var(--serif);font-weight:600;
+       font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink-soft);
+       border-bottom:1px solid var(--rule-strong);padding:9px 14px}
+  thead tr.sub th{background:var(--paper-raised);font-size:10.5px;letter-spacing:.04em;
+       text-transform:uppercase;color:var(--muted);font-weight:500;padding:5px 14px 9px;
+       border-bottom:1px solid var(--rule-strong)}
+  td{padding:8px 14px;border-bottom:1px solid var(--rule);white-space:nowrap;color:var(--ink-soft)}
+  td:first-child, td:nth-child(2){font-family:var(--serif);white-space:normal}
+  tbody tr:last-child td{border-bottom:none}
+  tr.ours td{background:var(--accent-soft);color:var(--ink);font-weight:600}
+  tr.ours td:first-child{border-left:2px solid var(--accent)}
+  td.dash{color:var(--faint);text-align:center}
+  th.group{text-align:center;border-left:1px solid var(--rule-strong)}
+  td.group-start{border-left:1px solid var(--rule)}
+
+  .barchart{margin:20px 0}
+  .bar-row{display:grid;grid-template-columns:200px 1fr 54px 54px;align-items:center;gap:12px;
+           padding:7px 0;font-size:13px}
+  .bar-row .lbl{color:var(--ink-soft)}
+  .bar-track{position:relative;height:9px;background:var(--rule);border-radius:5px}
+  .bar-fill{position:absolute;left:0;top:0;height:100%;border-radius:5px}
+  .bar-fill.vis{background:var(--vis)}
+  .bar-fill.vocab{background:var(--vocab)}
+  .bar-val{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .barchart .colheads{display:grid;grid-template-columns:200px 1fr 54px 54px;gap:12px;
+       font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+       color:var(--faint);padding-bottom:6px;border-bottom:1px solid var(--rule);margin-bottom:4px}
+  .barchart .colheads span:nth-child(3),.barchart .colheads span:nth-child(4){text-align:right}
+
+  .protocol{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--rule);
+            border-radius:3px;overflow:hidden;margin:20px 0}
+  @media (max-width:620px){.protocol{grid-template-columns:1fr 1fr}}
+  .protocol div{padding:16px 18px;border-right:1px solid var(--rule)}
+  .protocol div:last-child{border-right:none}
+  .protocol .k{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+               color:var(--muted);margin-bottom:5px}
+  .protocol .v{font-size:14.5px;color:var(--ink)}
+
+  .finding{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 3px 3px 0;
+           padding:16px 20px;margin:18px 0}
+  .finding p{margin-bottom:0;font-size:14.5px;color:var(--ink-soft)}
+  .finding .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+              color:var(--accent);font-weight:600;margin-bottom:6px}
+
+  .limits{margin:18px 0;padding:0;list-style:none}
+  .limits li{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14.5px;
+             color:var(--ink-soft)}
+  .limits li:last-child{border-bottom:none}
+  .limits .ln{font-family:var(--mono);color:var(--faint);flex:none;width:18px;text-align:right}
+
+  .refs{font-size:13px;color:var(--muted);line-height:1.8}
+  .refs .r{display:flex;gap:10px;margin-bottom:4px}
+  .refs .rn{font-family:var(--mono);color:var(--faint);flex:none;width:28px}
+
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--rule);font-size:12.5px;
+         color:var(--faint);font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <p class="kicker">ISBI draft &middot; out-of-distribution detection</p>
+  <h1>SCOUT: Scoring with Clinical Vocabulary and Neighbor Distance</h1>
+  <p class="subtitle">A training-free out-of-distribution detector for medical vision-language models, fusing a non-parametric visual-neighborhood score with a zero-shot clinical-vocabulary score.</p>
+  <div class="meta-row">
+    <span><b>Backbones</b> FLAIR (ResNet-50) &middot; BiomedCLIP (ViT-B/16)</span>
+    <span><b>Domains</b> Ophthalmology &middot; Dermatology</span>
+    <span><b>Shifts</b> Semantic &middot; Covariate &middot; Far-OOD</span>
+    <span><b>Protocol</b> 5 seeds, 30/70 dev&ndash;eval split</span>
+  </div>
+
+  <section id="abstract">
+    <div class="abstract">
+      <div class="label">Abstract</div>
+      <p>Medical vision-language models can assign confident predictions to images containing diseases or visual characteristics outside their training distribution. Existing OOD detectors perform inconsistently across medical domains. SCOUT combines two complementary signals &mdash; a zero-shot clinical-vocabulary score comparing image embeddings with clinical finding terms for known and unseen disease classes, and a non-parametric k-nearest-neighbor distance score measuring visual unfamiliarity relative to in-distribution reference embeddings. Both scores are standardized on ID development data alone and combined with a max rule, so either signal can raise a strong OOD warning without OOD training examples or fine-tuning.</p>
+      <div class="headline-stats">
+        <div><div class="v">0.955</div><div class="l">mean AUROC &middot; ophthalmology</div></div>
+        <div><div class="v">0.906</div><div class="l">mean AUROC &middot; dermatology</div></div>
+        <div><div class="v">max(&middot;,&middot;)</div><div class="l">fusion &mdash; no learned weights</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="method">
+    <h2><span class="num">3</span>Method</h2>
+    <div class="section-sub">Two signals, standardized once, fused by one fixed rule</div>
+    <p class="lede">SCOUT reads a frozen vision-language model twice: once by distance in the image embedding space, once by alignment with clinical language the model was never trained to match to any image.</p>
+
+    <div class="branches">
+      <div class="branch vis">
+        <div class="tag">Visual branch</div>
+        <h3>Relative Neighborhood&ndash;Calibrated Distance</h3>
+        <p>Absolute k-NN distance to the 20 nearest ID-development embeddings, corrected by an LOF-inspired relative term comparing the query's distance against its own neighbors' distances &mdash; distinguishing a genuinely isolated point from one merely sitting in a sparse but familiar region.</p>
+        <div class="formula">S<sub>vis</sub> = z(d<sub>k</sub>) + z(s<sub>rel</sub>)</div>
+      </div>
+      <div class="branch vocab">
+        <div class="tag">Semantic branch</div>
+        <h3>Clinical finding-vocabulary score</h3>
+        <p>Two fixed sets of 10 clinical finding terms &mdash; <i>T<sub>known</sub></i> for the trained disease classes, <i>T<sub>unseen</sub></i> for the semantic-shift classes &mdash; chosen from clinical knowledge, never the model's own training prompts. An image scores by its alignment with unseen findings relative to known ones.</p>
+        <div class="formula">S<sub>vocab</sub> = f(x)&#8407;&middot;(g&#772;<sub>u</sub> &minus; g&#772;<sub>k</sub>)</div>
+      </div>
+    </div>
+
+    <div class="fusion-rule">
+      <div class="formula">S<sub>SCOUT</sub>(x) = max( z<sub>vis</sub>(x), z<sub>vocab</sub>(x) )</div>
+      <div class="caption">Calibrated on ID development data only &mdash; no OOD labels, no learned fusion weight</div>
+    </div>
+
+    <h3 style="font-size:16px;margin:30px 0 4px;font-weight:600">Core equations</h3>
+    <div class="eq"><div class="eq-num">(2)</div><div class="eq-body">d<sub>k</sub>(x) = 1 &minus; (1/k) &sum;<sub>r&isin;N<sub>k</sub>(x)</sub> f&#770;(x)&#8407;&middot;f&#770;(r) &nbsp;&nbsp;&mdash;&nbsp; mean cosine distance to k=20 nearest ID-dev neighbors</div></div>
+    <div class="eq"><div class="eq-num">(3)</div><div class="eq-body">s<sub>rel</sub>(x) = log d<sub>k</sub>(x) &minus; (1/k) &sum;<sub>r&isin;N<sub>k</sub>(x)</sub> log d<sub>k</sub>(r) &nbsp;&nbsp;&mdash;&nbsp; RNCD relative-neighborhood correction</div></div>
+    <div class="eq"><div class="eq-num">(6)</div><div class="eq-body">S<sub>vocab</sub>(x) = f&#770;(x)&#8407;&middot;(g&#772;<sub>u</sub> &minus; g&#772;<sub>k</sub>) &nbsp;&nbsp;&mdash;&nbsp; mean alignment, unseen minus known finding terms</div></div>
+    <div class="eq"><div class="eq-num">(7)</div><div class="eq-body">z<sub>s</sub>(x) = (S<sub>s</sub>(x) &minus; &mu;<sub>s</sub>) / &sigma;<sub>s</sub>, &nbsp;s &isin; {vis, vocab} &nbsp;&nbsp;&mdash;&nbsp; standardized on ID-dev only</div></div>
+
+    <h3 style="font-size:16px;margin:30px 0 4px;font-weight:600">Clinical vocabulary &mdash; ophthalmology example</h3>
+    <p class="note" style="margin-bottom:12px">FLAIR's contrastive training named only two classes: normal and diabetic retinopathy. T<sub>known</sub> describes findings within that pair; T<sub>unseen</sub> names findings of AMD and glaucoma &mdash; diseases the text tower has never been aligned to any image for, not even at the class level.</p>
+    <div class="termsets">
+      <div class="termset known">
+        <div class="th">T<sub>known</sub> &middot; DR / normal</div>
+        <ul>
+          <li>microaneurysm</li><li>hard exudate</li><li>cotton wool spot</li>
+          <li>dot and blot hemorrhage</li><li>retinal neovascularization</li>
+          <li>macular edema</li><li>venous beading</li>
+          <li>diabetic retinal hemorrhage</li><li>normal healthy fundus</li>
+          <li>clear optic disc, no pathology</li>
+        </ul>
+      </div>
+      <div class="termset unseen">
+        <div class="th">T<sub>unseen</sub> &middot; AMD / glaucoma</div>
+        <ul>
+          <li>drusen deposits</li><li>geographic atrophy</li>
+          <li>choroidal neovascularization</li><li>RPE detachment</li>
+          <li>optic disc cupping</li><li>RNFL thinning</li>
+          <li>optic nerve pallor</li><li>peripapillary atrophy</li>
+          <li>age-related macular degeneration</li><li>glaucomatous angle closure</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="setup">
+    <h2><span class="num">2</span>Experimental setup</h2>
+    <div class="section-sub">Two domains, four shift groups, five seeds</div>
+    <p>Each benchmark has four groups &mdash; in-distribution, semantic shift, covariate shift, far-OOD &mdash; split 30/70 into a development set (reference bank and calibration) and a held-out evaluation set, averaged over five random seeds.</p>
+    <div class="protocol">
+      <div><div class="k">Ophthalmology ID</div><div class="v">FIVES normal + DR &middot; n=300</div></div>
+      <div><div class="k">Semantic shift</div><div class="v">FIVES AMD + glaucoma &middot; n=300</div></div>
+      <div><div class="k">Covariate shift</div><div class="v">DeepDRiD ultra-widefield &middot; n=150</div></div>
+      <div><div class="k">Far-OOD</div><div class="v">ImageNet-1k val &middot; n=150</div></div>
+      <div><div class="k">Dermatology ID</div><div class="v">ISIC 2019 melanocytic nevi &middot; n=300</div></div>
+      <div><div class="k">Semantic shift</div><div class="v">ISIC 2019 melanoma &middot; n=300</div></div>
+      <div><div class="k">Covariate shift</div><div class="v">PAD-UFES-20 &middot; n=300</div></div>
+      <div><div class="k">Far-OOD</div><div class="v">ImageNet-1k val &middot; n=300</div></div>
+    </div>
+    <p class="note">Ophthalmology embedded with FLAIR (ResNet-50 image encoder, Bio_ClinicalBERT text encoder, shared 512-d space); dermatology with BiomedCLIP (ViT-B/16 image encoder, PubMedBERT text encoder). k=20 throughout; k-NN reference bank drawn from the ID development split only.</p>
+  </section>
+
+  <section id="results">
+    <h2><span class="num">4</span>Results</h2>
+    <div class="section-sub">Table 1 &mdash; overall OOD detection performance</div>
+    <p>Mean &plusmn; standard deviation over five seeds. Higher AUROC and AUPR, lower FPR95, are better.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption><span class="tnum">Table 1.</span>OOD detection performance</caption>
+        <thead>
+          <tr><th></th><th></th><th class="group" colspan="3">Semantic</th><th class="group" colspan="3">Covariate</th><th class="group" colspan="3">Far-OOD</th></tr>
+          <tr class="sub"><th>Benchmark</th><th>Method</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th></tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="3">Ophthalmology</td><td>kNN</td><td>77.84&plusmn;1.39</td><td>79.20&plusmn;2.20</td><td>61.90&plusmn;0.42</td><td class="group-start">99.92&plusmn;0.06</td><td>99.87&plusmn;0.10</td><td>0.00&plusmn;0.00</td><td class="group-start">99.95&plusmn;0.04</td><td>99.90&plusmn;0.07</td><td>0.00&plusmn;0.00</td></tr>
+          <tr><td>SCOUT (generic)</td><td>87.66&plusmn;0.77</td><td>87.81&plusmn;0.84</td><td>47.52&plusmn;2.65</td><td class="group-start">99.60&plusmn;0.32</td><td>99.55&plusmn;0.29</td><td>0.00&plusmn;0.00</td><td class="group-start">100.00&plusmn;0.00</td><td>100.00&plusmn;0.00</td><td>0.00&plusmn;0.00</td></tr>
+          <tr class="ours"><td>SCOUT (eval.-informed)</td><td>89.48&plusmn;0.43</td><td>89.49&plusmn;0.50</td><td>39.05&plusmn;1.44</td><td class="group-start">99.89&plusmn;0.08</td><td>99.83&plusmn;0.12</td><td>0.00&plusmn;0.00</td><td class="group-start">100.00&plusmn;0.00</td><td>99.99&plusmn;0.01</td><td>0.00&plusmn;0.00</td></tr>
+          <tr><td rowspan="3">Dermatology</td><td>kNN</td><td>68.62&plusmn;2.26</td><td>70.46&plusmn;1.65</td><td>79.14&plusmn;2.91</td><td class="group-start">99.74&plusmn;0.07</td><td>99.72&plusmn;0.08</td><td>1.52&plusmn;0.35</td><td class="group-start">100.00&plusmn;0.00</td><td>100.00&plusmn;0.00</td><td>0.00&plusmn;0.00</td></tr>
+          <tr><td>SCOUT (generic)</td><td>57.68&plusmn;1.97</td><td>63.33&plusmn;1.69</td><td>92.19&plusmn;1.72</td><td class="group-start">99.68&plusmn;0.07</td><td>99.68&plusmn;0.05</td><td>1.24&plusmn;0.24</td><td class="group-start">100.00&plusmn;0.00</td><td>100.00&plusmn;0.00</td><td>0.00&plusmn;0.00</td></tr>
+          <tr class="ours"><td>SCOUT (eval.-informed)</td><td>60.22&plusmn;1.97</td><td>65.35&plusmn;1.58</td><td>92.67&plusmn;1.15</td><td class="group-start">99.70&plusmn;0.04</td><td>99.69&plusmn;0.04</td><td>1.43&plusmn;0.52</td><td class="group-start">100.00&plusmn;0.00</td><td>100.00&plusmn;0.00</td><td>0.00&plusmn;0.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">On ophthalmology, SCOUT with the evaluation-informed vocabulary reaches 89.48% semantic-shift AUROC versus 77.84% for kNN alone, and 87.66% with a generic vocabulary that never names the evaluation classes. On dermatology, SCOUT reaches 60.22% (evaluation-informed) and 57.68% (generic), <i>below</i> the 68.62% kNN baseline. Both benchmarks are near-perfect on covariate and far-OOD detection, so semantic shift is the discriminative setting throughout.</p>
+
+    <div class="finding">
+      <div class="k">Finding</div>
+      <p>The contrast between domains is the paper's central honest result: the same fusion rule, the same frozen-encoder design, helps on one domain and costs performance on the other. This motivates evaluating OOD detectors across domains and backbones rather than reporting a single benchmark.</p>
+    </div>
+
+    <div class="section-sub" style="margin-top:46px">Table 2 &mdash; comparison with existing methods</div>
+    <p>SCOUT (evaluation-informed) against MCM, PROTON, TAG, ANTS, and TANL, reproduced under the same protocol where available. The baseline rows are left as the draft reports them &mdash; not yet filled in.</p>
+    <div class="tablewrap">
+      <table>
+        <caption><span class="tnum">Table 2.</span>Comparison with existing OOD detection methods</caption>
+        <thead>
+          <tr><th></th><th></th><th class="group" colspan="3">Semantic</th><th class="group" colspan="3">Covariate</th><th class="group" colspan="3">Far-OOD</th></tr>
+          <tr class="sub"><th>Benchmark</th><th>Method</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th></tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="6">Ophthalmology</td><td>MCM</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>PROTON</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>TAG</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>ANTS</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>TANL</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr class="ours"><td>SCOUT</td><td>89.48&plusmn;0.43</td><td>89.49&plusmn;0.50</td><td>39.05&plusmn;1.44</td><td class="group-start">99.89&plusmn;0.08</td><td>99.83&plusmn;0.12</td><td>0.00&plusmn;0.00</td><td class="group-start">100.00&plusmn;0.00</td><td>99.99&plusmn;0.01</td><td>0.00&plusmn;0.00</td></tr>
+          <tr><td rowspan="6">Dermatology</td><td>MCM</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>PROTON</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>TAG</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>ANTS</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr><td>TANL</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash group-start">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+          <tr class="ours"><td>SCOUT</td><td>60.22&plusmn;1.97</td><td>65.35&plusmn;1.58</td><td>92.67&plusmn;1.15</td><td class="group-start">99.70&plusmn;0.04</td><td>99.69&plusmn;0.04</td><td>1.43&plusmn;0.52</td><td class="group-start">100.00&plusmn;0.00</td><td>100.00&plusmn;0.00</td><td>0.00&plusmn;0.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">PROTON reports 0.424 AUROC under covariate shift on FLAIR versus 0.764 for far-OOD, cited in the related-work discussion as evidence that existing methods are themselves inconsistent across shift types &mdash; part of the motivation for SCOUT's two-signal design.</p>
+
+    <div class="section-sub" style="margin-top:46px">Table 3 &mdash; visual and vocabulary ablation</div>
+    <p>Semantic-shift AUROC as each component is added, isolating what the relative-neighborhood term and the vocabulary branch each contribute.</p>
+
+    <div class="barchart">
+      <div class="colheads"><span>Method</span><span></span><span>Ophth.</span><span>Derm.</span></div>
+      <div class="bar-row">
+        <span class="lbl">kNN distance</span>
+        <div class="bar-track"><div class="bar-fill vis" style="width:77.84%"></div></div>
+        <span class="bar-val" style="color:var(--vis)">77.84</span>
+        <span class="bar-val" style="color:var(--muted)">68.62</span>
+      </div>
+      <div class="bar-row">
+        <span class="lbl">+ relative neighborhood (RNCD)</span>
+        <div class="bar-track"><div class="bar-fill vis" style="width:85.90%"></div></div>
+        <span class="bar-val" style="color:var(--vis)">85.90</span>
+        <span class="bar-val" style="color:var(--muted)">68.27</span>
+      </div>
+      <div class="bar-row">
+        <span class="lbl">SCOUT, generic vocabulary</span>
+        <div class="bar-track"><div class="bar-fill vocab" style="width:87.66%"></div></div>
+        <span class="bar-val" style="color:var(--vocab)">87.66</span>
+        <span class="bar-val" style="color:var(--bad)">57.68</span>
+      </div>
+      <div class="bar-row">
+        <span class="lbl" style="font-weight:600">SCOUT, eval.-informed vocabulary</span>
+        <div class="bar-track"><div class="bar-fill vocab" style="width:89.48%"></div></div>
+        <span class="bar-val" style="color:var(--vocab);font-weight:700">89.48</span>
+        <span class="bar-val" style="color:var(--bad);font-weight:700">60.22</span>
+      </div>
+    </div>
+    <p class="note">On ophthalmology every addition helps: 77.84 &rarr; 85.90 &rarr; 87.66 &rarr; 89.48. On dermatology, the relative-neighborhood term is roughly neutral (68.62 &rarr; 68.27) and the vocabulary branch actively <i>lowers</i> AUROC (68.27 &rarr; 60.22 / 57.68) &mdash; the vocabulary branch is only useful when the VLM's text tower separates the target findings.</p>
+  </section>
+
+  <section id="conclusion">
+    <h2><span class="num">5</span>Conclusion &amp; limitations</h2>
+    <div class="section-sub">Near-perfect on covariate and far-OOD; semantic shift is where domains diverge</div>
+    <p>SCOUT combines visual-neighborhood analysis with clinical-vocabulary scoring, calibrated on ID development data without retraining or labeled OOD examples. It is near-perfect on covariate and far-OOD detection on both benchmarks, and improves semantic-shift detection in ophthalmology &mdash; while dermatology semantic shift remains an open limitation.</p>
+    <ol class="limits">
+      <li><span class="ln">01</span>Relative-neighborhood information depends on the structure of the embedding space itself, which varies by backbone and domain.</li>
+      <li><span class="ln">02</span>Vocabulary scoring depends on how clinical findings are selected &mdash; a different term list can flip its contribution from harmful to helpful.</li>
+      <li><span class="ln">03</span>Evaluation covers two domains and specific benchmark constructions; broader clinical datasets and deployment settings are future work.</li>
+    </ol>
+  </section>
+
+  <section id="refs">
+    <h2><span class="num">6</span>Selected references</h2>
+    <div class="refs">
+      <div class="r"><span class="rn">[1]</span>Silva-Rodr&iacute;guez et al., &ldquo;FLAIR: Encoding expert knowledge in text supervision,&rdquo; <i>Medical Image Analysis</i>, 99:103357, 2025.</div>
+      <div class="r"><span class="rn">[2]</span>Zhang et al., &ldquo;BiomedCLIP: a multimodal biomedical foundation model,&rdquo; <i>arXiv:2303.00915</i>, 2023.</div>
+      <div class="r"><span class="rn">[5]</span>Ming et al., &ldquo;Delving into OOD detection with vision-language representations,&rdquo; <i>NeurIPS</i>, 2022.</div>
+      <div class="r"><span class="rn">[6]</span>Liu &amp; Zach, &ldquo;TAG: text prompt augmentation for zero-shot OOD detection,&rdquo; <i>ECCV</i>, 2024.</div>
+      <div class="r"><span class="rn">[7]</span>Zhu et al., &ldquo;ANTS: adaptive negative textual space shaping,&rdquo; <i>CVPR</i>, 2026.</div>
+      <div class="r"><span class="rn">[8]</span>Zhang et al., &ldquo;Activation matters: test-time activated negative labels,&rdquo; <i>CVPR</i>, 2026.</div>
+      <div class="r"><span class="rn">[9]</span>Sun et al., &ldquo;OOD detection with deep nearest neighbors,&rdquo; <i>ICML</i>, 2022.</div>
+      <div class="r"><span class="rn">[10]</span>Das et al., &ldquo;PROTON: prototype-based test-time online OOD detection,&rdquo; <i>arXiv:2606.20913</i>, 2026.</div>
+      <div class="r"><span class="rn">[11]</span>Breunig et al., &ldquo;LOF: identifying density-based local outliers,&rdquo; <i>SIGMOD</i>, 2000.</div>
+    </div>
+  </section>
+
+  <footer>SCOUT &middot; ISBI submission draft &middot; values transcribed directly from the manuscript's Tables 1&ndash;3</footer>
+
+</div>
+</body>
+</html>
