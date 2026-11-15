@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOUT</title>
+<meta name="description" content="A training-free OOD detector for medical vision-language models, fusing density-calibrated neighbor distance with zero-shot clinical vocabulary — ISBI submission companion.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔭</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>window.MathJax = {tex: {inlineMath: [['$','$'],['\\(','\\)']]}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" id="MathJax-script" async></script>
+<style>
+  :root{
+    --ink:#171b1d; --ink-soft:#3a4245; --muted:#687175; --faint:#9aa3a6;
+    --paper:#fbfaf7; --paper-raised:#f1efe9; --rule:#ddd9d0; --rule-strong:#c3bdb0;
+    --accent:#2f7d6e; --accent-soft:#e3efec; --accent-ink:#1c5346;
+    --vis:#3f66ad; --vis-soft:#e9eefa;
+    --vocab:#b56a35; --vocab-soft:#f6e9dc;
+    --good:#2f8a56; --good-soft:#e5f3ea; --bad:#b4432f; --bad-soft:#fbe9e5;
+    --mono:'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e9e6df; --ink-soft:#c2bdb2; --muted:#8e897e; --faint:#625d53;
+      --paper:#121412; --paper-raised:#1a1c19; --rule:#302e29; --rule-strong:#47453d;
+      --accent:#5fb3a0; --accent-soft:#17251f; --accent-ink:#8fd1c0;
+      --vis:#7fa0e0; --vis-soft:#171c28;
+      --vocab:#d99a62; --vocab-soft:#2a1f14;
+      --good:#6fbf8a; --good-soft:#132018; --bad:#d4705f; --bad-soft:#271510;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e9e6df; --ink-soft:#c2bdb2; --muted:#8e897e; --faint:#625d53;
+    --paper:#121412; --paper-raised:#1a1c19; --rule:#302e29; --rule-strong:#47453d;
+    --accent:#5fb3a0; --accent-soft:#17251f; --accent-ink:#8fd1c0;
+    --vis:#7fa0e0; --vis-soft:#171c28;
+    --vocab:#d99a62; --vocab-soft:#2a1f14;
+    --good:#6fbf8a; --good-soft:#132018; --bad:#d4705f; --bad-soft:#271510;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+       font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent-soft);color:var(--accent-ink)}
+  img{max-width:100%}
+  a{color:var(--accent-ink);text-decoration-thickness:1px;text-underline-offset:2px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+  /* top progress/nav */
+  .topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--paper) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar-inner{max-width:760px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:18px;height:52px;overflow-x:auto;white-space:nowrap}
+  .topbar-mark{font-family:var(--serif);font-weight:600;font-size:16px;flex:none}
+  .topbar-nav{display:flex;gap:16px;font-size:12.5px;color:var(--muted)}
+  .topbar-nav a{color:var(--muted);text-decoration:none;padding:4px 0;border-bottom:2px solid transparent}
+  .topbar-nav a:hover{color:var(--ink);border-color:var(--rule-strong)}
+
+  main{max-width:760px;margin:0 auto;padding:0 24px 110px}
+  .wide{max-width:900px;margin-left:auto;margin-right:auto}
+
+  section{margin:68px 0;scroll-margin-top:68px}
+  section:first-of-type{margin-top:0}
+
+  /* hero */
+  .hero{padding:56px 0 8px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 16px;display:flex;align-items:center;gap:10px}
+  .kicker::before{content:"";width:24px;height:1px;background:var(--accent)}
+  h1{font-family:var(--serif);font-size:38px;line-height:1.14;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;text-wrap:balance;max-width:14ch}
+  .subtitle{font-size:18px;color:var(--ink-soft);margin:0 0 22px;max-width:52ch;text-wrap:balance;font-weight:400}
+  .authors{font-size:13.5px;color:var(--muted);margin:0 0 26px;line-height:1.7}
+  .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rule);border-radius:4px;background:var(--paper-raised);margin-bottom:28px}
+  @media (max-width:600px){.hero-stats{grid-template-columns:1fr}}
+  .hero-stats div{padding:16px 18px;border-left:1px solid var(--rule)}
+  .hero-stats div:first-child{border-left:none}
+  @media (max-width:600px){.hero-stats div{border-left:none;border-top:1px solid var(--rule)}.hero-stats div:first-child{border-top:none}}
+  .hero-stats .v{font-family:var(--mono);font-size:25px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  .hero-stats .l{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.4}
+
+  h2{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin:0 0 6px}
+  h2 .num{color:var(--faint);margin-right:9px}
+  .section-title{font-family:var(--serif);font-size:25px;font-weight:600;color:var(--ink);margin:2px 0 20px;letter-spacing:-.005em;text-wrap:balance}
+  h3{font-family:var(--serif);font-size:18px;margin:30px 0 11px;font-weight:600}
+  p{margin:0 0 15px;max-width:66ch}
+  .lede{font-size:17.5px;color:var(--ink-soft)}
+  .note{font-size:13.5px;color:var(--muted);line-height:1.6}
+  b{font-weight:600;color:var(--ink)}
+
+  .takeaway{background:var(--paper-raised);border:1px solid var(--rule);border-left:3px solid var(--accent);
+            border-radius:0 4px 4px 0;padding:17px 21px;margin:0 0 26px}
+  .takeaway .tk-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:7px}
+  .takeaway p{margin-bottom:0;font-size:14.5px;color:var(--ink-soft);max-width:none}
+
+  .prov{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+        padding:3px 9px;border-radius:999px;margin-bottom:11px}
+  .prov.measured{background:var(--good-soft);color:var(--good)}
+  .prov.illus{background:var(--vocab-soft);color:var(--vocab)}
+
+  /* equations */
+  .eq{display:flex;align-items:center;gap:18px;margin:16px 0;padding:2px 0}
+  .eq-body{flex:1;font-family:var(--mono);font-size:13.5px;background:var(--paper-raised);border:1px solid var(--rule);
+           border-radius:4px;padding:14px 18px;overflow-x:auto}
+  .eq-num{font-family:var(--mono);font-size:12px;color:var(--faint);flex:none;width:30px;text-align:right}
+
+  /* branch cards */
+  .branches{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+  @media (max-width:620px){.branches{grid-template-columns:1fr}}
+  .branch{border-radius:4px;padding:21px 23px;border:1px solid var(--rule)}
+  .branch.vis{background:var(--vis-soft);border-color:color-mix(in srgb, var(--vis) 35%, var(--rule))}
+  .branch.vocab{background:var(--vocab-soft);border-color:color-mix(in srgb, var(--vocab) 35%, var(--rule))}
+  .branch .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:11px}
+  .branch.vis .tag{color:var(--vis)} .branch.vocab .tag{color:var(--vocab)}
+  .branch h4{font-family:var(--serif);font-size:17.5px;margin:0 0 9px;font-weight:600}
+  .branch p{font-size:14px;color:var(--ink-soft);margin-bottom:10px;max-width:none}
+  .branch .formula{font-family:var(--mono);font-size:13px;font-weight:600}
+  .branch.vis .formula{color:var(--vis)} .branch.vocab .formula{color:var(--vocab)}
+
+  .fusion-rule{text-align:center;margin:26px auto 0;max-width:430px;border:1.5px solid var(--ink);border-radius:4px;padding:17px 22px;background:var(--paper-raised)}
+  .fusion-rule .formula{font-family:var(--mono);font-size:16.5px;font-weight:700}
+  .fusion-rule .caption{font-size:12.5px;color:var(--muted);margin-top:7px}
+
+  .example-card{border:1px solid var(--rule);border-radius:4px;background:var(--paper-raised);padding:19px 23px;margin:17px 0}
+  .example-row{display:grid;grid-template-columns:220px 72px 1fr;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px dotted var(--rule);font-size:13.5px}
+  .example-row:last-child{border-bottom:none}
+  .ex-lbl{color:var(--ink-soft)}
+  .ex-val{font-family:var(--mono);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .ex-note{font-size:12px;color:var(--muted)}
+  .example-row.fused-row{margin-top:5px;padding-top:13px;border-top:1.5px solid var(--rule-strong)}
+
+  .status-table{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rule);border-radius:4px;overflow:hidden;margin:20px 0;background:var(--paper-raised)}
+  @media (max-width:620px){.status-table{grid-template-columns:1fr}}
+  .status-table div{padding:16px 18px;border-right:1px solid var(--rule)}
+  @media (max-width:620px){.status-table div{border-right:none;border-bottom:1px solid var(--rule)}}
+  .status-table div:last-child{border:none}
+  .status-table .k{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .status-table .v{font-size:14px;color:var(--ink)}
+
+  .termsets{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+  @media (max-width:620px){.termsets{grid-template-columns:1fr}}
+  .termset{border:1px solid var(--rule);border-radius:4px;padding:19px 21px;background:var(--paper-raised)}
+  .termset .th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:13px;display:flex;align-items:center;gap:7px}
+  .termset.known .th{color:var(--vis)} .termset.unseen .th{color:var(--vocab)}
+  .termset .th::before{content:"";width:7px;height:7px;border-radius:50%}
+  .termset.known .th::before{background:var(--vis)} .termset.unseen .th::before{background:var(--vocab)}
+  .termset ul{margin:0;padding:0;list-style:none;font-size:13.5px;color:var(--ink-soft)}
+  .termset li{padding:5px 0;border-bottom:1px dotted var(--rule)}
+  .termset li:last-child{border-bottom:none}
+
+  .tablewrap{overflow-x:auto;margin:16px 0 8px;border:1px solid var(--rule);border-radius:4px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  caption{caption-side:top;text-align:left;font-family:var(--sans);font-size:14.5px;font-weight:600;color:var(--ink);padding:15px 16px 5px;background:var(--paper-raised)}
+  caption .tnum{font-family:var(--mono);color:var(--accent-ink);margin-right:8px;font-weight:700}
+  thead tr:first-child th{background:var(--paper-raised);font-family:var(--sans);font-weight:600;font-size:12px;
+       color:var(--ink-soft);border-bottom:1px solid var(--rule-strong);padding:9px 11px}
+  thead tr.sub th{background:var(--paper-raised);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+       font-weight:500;padding:5px 11px 9px;border-bottom:1px solid var(--rule-strong)}
+  td{padding:7px 11px;border-bottom:1px solid var(--rule);white-space:nowrap;color:var(--ink-soft)}
+  td:first-child, td:nth-child(2){font-family:var(--sans);white-space:normal}
+  tbody tr:last-child td{border-bottom:none}
+  tr.ours td{background:var(--accent-soft);color:var(--ink);font-weight:600}
+  tr.ours td:first-child{border-left:2px solid var(--accent)}
+  th.group{text-align:center;border-left:1px solid var(--rule-strong)}
+  td.group-start{border-left:1px solid var(--rule)}
+  td.win{color:var(--good);font-weight:600} td.loss{color:var(--bad)}
+
+  .toggles{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+  .toggle-group{display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden}
+  .toggle-group button{font-family:var(--mono);font-size:11.5px;padding:6px 14px;border:none;background:var(--paper-raised);color:var(--muted);cursor:pointer;border-right:1px solid var(--rule)}
+  .toggle-group button:last-child{border-right:none}
+  .toggle-group button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+  .chart-card{border:1px solid var(--rule);border-radius:4px;background:var(--paper-raised);padding:20px;margin:16px 0}
+  .chart-card canvas{max-height:360px}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:9px;line-height:1.55}
+
+  .finding{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 4px 4px 0;padding:17px 21px;margin:18px 0}
+  .finding.loss{border-left-color:var(--bad);background:var(--bad-soft)}
+  .finding p{margin-bottom:0;font-size:14.5px;color:var(--ink-soft)}
+  .finding .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:7px;color:var(--accent-ink)}
+  .finding.loss .k{color:var(--bad)}
+
+  /* FAQ */
+  .qa-item{border:1px solid var(--rule);border-radius:4px;margin-bottom:9px;background:var(--paper-raised)}
+  .qa-item summary{padding:15px 19px;font-size:14.5px;font-weight:600;cursor:pointer;list-style:none;display:flex;gap:11px;align-items:baseline}
+  .qa-item summary::-webkit-details-marker{display:none}
+  .qa-item summary::before{content:"+";font-family:var(--mono);color:var(--accent-ink);font-weight:700;flex:none}
+  .qa-item[open] summary::before{content:"\2212"}
+  .qa-item .qa-body{padding:0 19px 17px;font-size:14px;color:var(--ink-soft)}
+  .qa-item .qa-body p{max-width:none}
+
+  /* demo */
+  .demo{border:1px solid var(--rule);border-radius:4px;padding:22px;margin:18px 0;background:var(--paper-raised)}
+  .samplerow{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .samplebtn{font-family:var(--mono);font-size:12px;font-weight:500;padding:7px 13px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);color:var(--muted);cursor:pointer}
+  .samplebtn:hover{border-color:var(--rule-strong);color:var(--ink)}
+  .samplebtn[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .demoresult-3{display:grid;grid-template-columns:150px 1fr 1fr;gap:16px}
+  @media (max-width:680px){.demoresult-3{grid-template-columns:1fr}}
+  .demopanel{border:1px solid var(--rule);border-radius:4px;padding:17px;background:var(--paper)}
+  .demoimg-panel{padding:12px}
+  .demoimg-panel img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid var(--rule)}
+  .ptitle{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:13px;font-weight:600}
+  .tracerow{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:13px}
+  .tlbl{font-family:var(--mono);width:60px;flex-shrink:0;color:var(--muted)}
+  .tracetrack{flex:1;height:7px;background:var(--rule);border-radius:4px;position:relative;overflow:visible}
+  .tracefill{height:100%;border-radius:4px;transition:width .35s ease}
+  .tracemark{position:absolute;top:-3px;width:2px;height:13px;background:var(--faint)}
+  .traceval{font-family:var(--mono);width:46px;text-align:right;flex-shrink:0;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .verdict{margin-top:15px;padding:11px 13px;border-radius:4px;font-size:13px;font-weight:600;text-align:center}
+  .verdict.id{background:var(--good-soft);color:var(--good)}
+  .verdict.ood{background:var(--bad-soft);color:var(--bad)}
+  .scorebig{font-family:var(--mono);font-size:31px;font-weight:700;color:var(--ink);text-align:center;padding:11px 0 5px}
+  .scoreformula{font-size:11.5px;color:var(--muted);text-align:center;margin:0;line-height:1.5}
+  .playrow{display:flex;align-items:center;gap:11px;margin:17px 0 4px;flex-wrap:wrap}
+  .playbtn{font-family:var(--mono);font-size:13px;font-weight:600;padding:9px 18px;border-radius:999px;border:1px solid var(--accent);background:var(--accent);color:var(--paper);cursor:pointer}
+  .playbtn:hover{filter:brightness(1.08)}
+  .playlabel{font-size:12px;color:var(--muted)}
+
+  .hyp{border:1px solid var(--rule);border-radius:4px;padding:19px 21px;margin-bottom:13px;background:var(--paper-raised)}
+  .hyp-head{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+  .hyp-id{font-family:var(--mono);font-weight:700;color:var(--accent-ink);font-size:13px}
+  .hyp-status{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 10px;border-radius:999px;background:var(--rule);color:var(--muted)}
+  .hyp dl{margin:0;display:grid;grid-template-columns:112px 1fr;gap:7px 14px;font-size:13.5px}
+  .hyp dt{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:2px}
+  .hyp dd{margin:0;color:var(--ink-soft)}
+
+  footer{margin-top:76px;padding-top:26px;border-top:1px solid var(--rule);font-size:12px;color:var(--faint);font-family:var(--mono);line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="topbar-mark">SCOUT</span>
+    <nav class="topbar-nav">
+      <a href="#problem">Problem</a>
+      <a href="#method">Method</a>
+      <a href="#demo">Try it</a>
+      <a href="#results">Results</a>
+      <a href="#embeddings">Embeddings</a>
+      <a href="#ablation">Ablation</a>
+      <a href="#faq">FAQ</a>
+      <a href="#limits">Limits</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+
+  <section id="hero" class="hero">
+    <p class="kicker">ISBI submission companion &middot; out-of-distribution detection</p>
+    <h1>SCOUT</h1>
+    <p class="subtitle">Scoring with Clinical Vocabulary and Neighbor Distance: a training-free OOD detector for medical vision-language models.</p>
+    <p class="authors">Anubhab Bhattacharya<sup>1</sup>, Utathya Aich<sup>2</sup>, Soham Mandal<sup>1</sup>, Viacheslav Gulvanskii<sup>3</sup>, Dmitrii Kaplun<sup>3</sup>, Ram Sarkar<sup>1</sup><br>
+    <sup>1</sup>Jadavpur University &middot; <sup>2</sup>CNH Industrial ITC &middot; <sup>3</sup>SPbETU &ldquo;LETI&rdquo;</p>
+    <div class="hero-stats" id="hero-stats"></div>
+    <figure style="margin:30px 0 0">
+      <img src="assets/figures/paper_fig1.png" alt="SCOUT architecture: an input image passes through a frozen image encoder into the Relative Neighbourhood Calibrated Distance branch and the Vocabulary-Based Semantic Score branch; both scores are standardized on ID data and combined by a max rule into the final OOD score" style="border-radius:5px;border:1px solid var(--rule);background:#fff">
+      <figcaption>Figure 1 (paper). Two branches, standardized independently, combined by <code>max(&middot;,&middot;)</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section id="problem">
+    <h2><span class="num">1</span>Problem</h2>
+    <div class="section-title">Three ways a confident prediction can be wrong</div>
+    <div class="takeaway"><div class="tk-label">Takeaway</div><p>A medical VLM can assign a known class with high confidence to an image it has no business recognizing — an unseen disease, a different camera, or something that isn't medical at all. Each failure needs different evidence to catch.</p></div>
+    <p>Every benchmark here is split into four groups: in-distribution (ID), semantic shift, covariate shift, and far-OOD.</p>
+    <div class="tablewrap">
+      <table>
+        <caption>Benchmark composition, exactly as reported</caption>
+        <thead><tr><th>Benchmark</th><th>ID</th><th>Semantic shift</th><th>Covariate shift</th><th>Far-OOD</th></tr></thead>
+        <tbody>
+          <tr><td>Ophthalmology</td><td>FIVES normal + DR (n=300)</td><td>FIVES AMD + glaucoma (n=300)</td><td>DeepDRiD ultra-widefield (n=150)</td><td>ImageNet-1k val (n=150)</td></tr>
+          <tr><td>Dermatology</td><td>ISIC 2019 melanocytic nevi (n=300)</td><td>ISIC 2019 melanoma (n=300)</td><td>PAD-UFES-20 (n=300)</td><td>ImageNet-1k val (n=300)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Backbones</h3>
+    <div class="status-table">
+      <div><div class="k">Ophthalmology</div><div class="v">FLAIR (ResNet-50 image, Bio_ClinicalBERT text, 512-d shared space)</div></div>
+      <div><div class="k">Dermatology</div><div class="v">BiomedCLIP (ViT-B/16 image, PubMedBERT text)</div></div>
+      <div><div class="k">Protocol</div><div class="v">5 random splits / seeds, k=20</div></div>
+    </div>
+  </section>
+
+  <section id="why-fail">
+    <h2><span class="num">2</span>Why existing scores fail</h2>
+    <div class="section-title">Distance and language, each blind to what the other sees</div>
+    <div class="takeaway"><div class="tk-label">Takeaway</div><p>Distance-based scores ignore local density and can miss diseases that resemble known ones in embedding space. Prompt-based scores cannot express findings the model's trained prompts never named. SCOUT treats these as complementary.</p></div>
+    <div class="branches">
+      <div class="branch vis">
+        <div class="tag">Distance-based failure</div>
+        <h4>Density-blind kNN</h4>
+        <p>A query in a sparse-but-familiar ID region looks just as "far" as a query that is genuinely novel — plain kNN distance cannot tell the two apart without knowing local density.</p>
+      </div>
+      <div class="branch vocab">
+        <div class="tag">Prompt-based failure</div>
+        <h4>Vocabulary-blind prompting</h4>
+        <p>A model's own class-level training prompts only ever named a small set of diseases — it has no way to express "this looks like a finding I was never given a word for."</p>
+      </div>
+    </div>
+
+    <h3>A worked example</h3>
+    <span class="prov measured">Real evaluation image &middot; ophthalmology, seed 42</span>
+    <p>A semantic-shift image (AMD/glaucoma) where the two branches disagree, and vocabulary is what ends up catching it:</p>
+    <div class="example-card">
+      <div class="example-row"><span class="ex-lbl">$d_k$ (kNN distance)</span><span class="ex-val">0.167</span><span class="ex-note">unremarkable on its own</span></div>
+      <div class="example-row"><span class="ex-lbl">$s_{rel}$ (RNCD relative term)</span><span class="ex-val">0.319</span><span class="ex-note">mildly elevated</span></div>
+      <div class="example-row"><span class="ex-lbl">$z_{vis}$</span><span class="ex-val" style="color:var(--vis)">0.26</span><span class="ex-note">borderline — likely missed by vision alone</span></div>
+      <div class="example-row"><span class="ex-lbl">$z_{vocab}$</span><span class="ex-val" style="color:var(--vocab)">1.47</span><span class="ex-note">clearly OOD</span></div>
+      <div class="example-row fused-row"><span class="ex-lbl">$S_{SCOUT}=\max(0.26,1.47)$</span><span class="ex-val" style="color:var(--accent-ink);font-weight:700">1.47</span><span class="ex-note">vocabulary branch wins</span></div>
+    </div>
+  </section>
+
+  <section id="method">
+    <h2><span class="num">3</span>Method</h2>
+    <div class="section-title">Two signals, standardized once, fused by one fixed rule</div>
+    <div class="takeaway"><div class="tk-label">Takeaway</div><p>SCOUT reads a frozen VLM twice: once by distance in the image embedding space (RNCD), once by alignment with clinical language the model was never trained to match to any image. Both are z-scored on ID-dev data only and combined by <code>max(&middot;,&middot;)</code> — no training, no OOD examples, no fine-tuning.</p></div>
+
+    <div class="status-table">
+      <div><div class="k">Frozen</div><div class="v">Image &amp; text encoders — no gradient updates</div></div>
+      <div><div class="k">Trained</div><div class="v">Nothing. No classifier, no fusion weight</div></div>
+      <div><div class="k">Needs OOD data</div><div class="v">No. Calibration uses ID-dev only</div></div>
+    </div>
+
+    <div class="branches">
+      <div class="branch vis">
+        <div class="tag">Visual branch</div>
+        <h4>Relative Neighborhood&ndash;Calibrated Distance</h4>
+        <p>Absolute k-NN distance to the 20 nearest ID-dev embeddings, corrected by an LOF-inspired relative term comparing the query's distance to its own neighbors' distances.</p>
+        <div class="formula">S<sub>vis</sub> = z(d<sub>k</sub>) + z(s<sub>rel</sub>)</div>
+      </div>
+      <div class="branch vocab">
+        <div class="tag">Semantic branch</div>
+        <h4>Clinical finding-vocabulary score</h4>
+        <p>Two fixed term sets — $T_{known}$ for ID classes, $T_{unknown}$ for semantic-shift classes — chosen from clinical knowledge, not the model's trained prompts.</p>
+        <div class="formula">S<sub>vocab</sub> = f(x)&#8407;&middot;(g&#772;<sub>u</sub> &minus; g&#772;<sub>k</sub>)</div>
+      </div>
+    </div>
+    <div class="fusion-rule">
+      <div class="formula">S<sub>SCOUT</sub>(x) = max( z<sub>vis</sub>(x), z<sub>vocab</sub>(x) )</div>
+      <div class="caption">Either branch alone can raise the alarm &mdash; no learned fusion weight</div>
+    </div>
+
+    <h3>Core equations</h3>
+    <div class="eq"><div class="eq-num">2</div><div class="eq-body">$d_k(x) = 1 - \frac{1}{k}\sum_{r\in N_k(x)} \hat f(x)^\top \hat f(r)$ &mdash; mean cosine distance to k=20 nearest ID-dev neighbors</div></div>
+    <div class="eq"><div class="eq-num">3</div><div class="eq-body">$s_{rel}(x) = \log d_k(x) - \frac{1}{k}\sum_{r\in N_k(x)} \log d_k(r)$ &mdash; RNCD relative-neighborhood correction</div></div>
+    <div class="eq"><div class="eq-num">6</div><div class="eq-body">$S_{vocab}(x) = \hat f(x)^\top(\bar g_u - \bar g_k)$ &mdash; mean alignment, unknown minus known finding terms</div></div>
+    <div class="eq"><div class="eq-num">7</div><div class="eq-body">$z_s(x) = \frac{S_s(x)-\mu_s}{\sigma_s},\ s\in\{vis,vocab\}$ &mdash; standardized on ID-dev only</div></div>
+  </section>
+
+  <section id="demo">
+    <h2><span class="num">4</span>Try it</h2>
+    <div class="section-title">Plug an evaluation image into both branches, live</div>
+    <p class="note">Five hand-picked examples across both benchmarks, or press play to draw a real row from the evaluation set (seed 42) at random.</p>
+    <div class="demo">
+      <div class="samplerow" id="demo-samples">
+        <button type="button" class="samplebtn" data-sample="id_normal" aria-selected="true">Ophth. ID &middot; normal</button>
+        <button type="button" class="samplebtn" data-sample="id_dr">Ophth. ID &middot; DR</button>
+        <button type="button" class="samplebtn" data-sample="semantic_amd">Ophth. semantic &middot; AMD</button>
+        <button type="button" class="samplebtn" data-sample="covariate_uwf">Ophth. covariate &middot; UWF</button>
+        <button type="button" class="samplebtn" data-sample="derm_id_nv">Derm. ID &middot; nevus</button>
+        <button type="button" class="samplebtn" data-sample="derm_semantic_mel">Derm. semantic &middot; melanoma</button>
+        <button type="button" class="samplebtn" data-sample="far_ood_imagenet">Far-OOD &middot; ImageNet</button>
+      </div>
+      <div class="demoresult-3">
+        <div class="demopanel demoimg-panel">
+          <div class="ptitle">Input image</div>
+          <img id="demo-img" src="assets/figures/demo/id_normal.jpg" alt="Selected sample image">
+        </div>
+        <div class="demopanel">
+          <div class="ptitle">Standardized scores</div>
+          <div class="tracerow"><span class="tlbl">z_vis</span><div class="tracetrack"><div class="tracefill" id="demo-bar-vis" style="width:0%;background:var(--vis)"></div><div class="tracemark" style="left:50%"></div></div><span class="traceval" id="demo-val-vis">&mdash;</span></div>
+          <div class="tracerow"><span class="tlbl">z_vocab</span><div class="tracetrack"><div class="tracefill" id="demo-bar-vocab" style="width:0%;background:var(--vocab)"></div><div class="tracemark" style="left:50%"></div></div><span class="traceval" id="demo-val-vocab">&mdash;</span></div>
+          <p class="note" style="margin:11px 0 0">Tick mark &asymp; typical ID-dev 95th-percentile threshold on each branch.</p>
+        </div>
+        <div class="demopanel">
+          <div class="ptitle">Fused decision</div>
+          <div class="scorebig" id="demo-score">&mdash;</div>
+          <p class="scoreformula" id="demo-formula">S<sub>SCOUT</sub> = max(z<sub>vis</sub>, z<sub>vocab</sub>)</p>
+          <div class="verdict" id="demo-verdict">&mdash;</div>
+        </div>
+      </div>
+      <div class="playrow">
+        <button type="button" class="playbtn" id="demo-play">&#9654; Play a random eval image</button>
+        <span class="playlabel" id="demo-play-label"></span>
+      </div>
+    </div>
+  </section>
+
+  <section id="results">
+    <h2><span class="num">5</span>Results</h2>
+    <div class="section-title">Table 1 &mdash; SCOUT vocabulary variants</div>
+    <div class="tablewrap">
+      <table id="table1">
+        <caption><span class="tnum">Table 1.</span>SCOUT (generic / evaluation-informed) vs. kNN</caption>
+        <thead>
+          <tr><th></th><th></th><th class="group" colspan="3">Semantic</th><th class="group" colspan="3">Covariate</th><th class="group" colspan="3">Far-OOD</th></tr>
+          <tr class="sub"><th>Benchmark</th><th>Method</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th><th>AUROC</th><th>AUPR</th><th>FPR95</th></tr>
+        </thead>
+        <tbody id="table1-body"></tbody>
+      </table>
+    </div>
+
+    <h3>Table 2 &mdash; comparison with existing methods</h3>
+    <div class="toggles">
+      <div class="toggle-group" id="t2-bench">
+        <button type="button" data-bench="ophthalmology" aria-pressed="true">Ophthalmology</button>
+        <button type="button" data-bench="dermatology" aria-pressed="false">Dermatology</button>
+      </div>
+      <div class="toggle-group" id="t2-shift">
+        <button type="button" data-shift="semantic" aria-pressed="true">Semantic</button>
+        <button type="button" data-shift="covariate" aria-pressed="false">Covariate</button>
+        <button type="button" data-shift="far_ood" aria-pressed="false">Far-OOD</button>
+      </div>
+      <div class="toggle-group" id="t2-metric">
+        <button type="button" data-metric="AUROC" aria-pressed="true">AUROC</button>
+        <button type="button" data-metric="AUPR" aria-pressed="false">AUPR</button>
+        <button type="button" data-metric="FPR95" aria-pressed="false">FPR95</button>
+      </div>
+    </div>
+    <div class="chart-card">
+      <canvas id="t2-chart" role="img" aria-label="Grouped bar chart comparing methods on the selected benchmark, shift, and metric"></canvas>
+    </div>
+    <figcaption id="t2-caption"></figcaption>
+
+    <h3>Mean AUROC across all three shifts</h3>
+    <div class="chart-card">
+      <canvas id="mean-chart" role="img" aria-label="Bar chart of mean AUROC per method and benchmark"></canvas>
+    </div>
+
+    <div class="finding loss" style="margin-top:24px"><div class="k">Where SCOUT loses</div><p>On dermatology semantic shift, TANL (81.71%) and ANTS (77.77%) both exceed SCOUT (75.14%). On ophthalmology semantic shift, PROTON's FPR95 (38.48%) is marginally below SCOUT's (39.05%), though SCOUT leads PROTON on AUROC and AUPR there. On dermatology covariate shift, SCOUT (96.83%) scores below plain kNN (97.26%).</p></div>
+  </section>
+
+  <section id="embeddings">
+    <h2><span class="num">6</span>Embeddings</h2>
+    <div class="section-title">Why dermatology is the harder benchmark</div>
+    <div class="takeaway"><div class="tk-label">Takeaway</div><p>A 2-D projection of each benchmark's frozen image embeddings shows exactly what Table 3's ablation implies: ophthalmology's four groups separate cleanly, while dermatology's ID (nevus) and semantic-shift (melanoma) points overlap heavily — embeddings here track imaging style more than lesion type.</p></div>
+    <div class="toggles"><div class="toggle-group" id="embed-tabs">
+      <button type="button" data-embed="ophthalmology" aria-pressed="true">Ophthalmology</button>
+      <button type="button" data-embed="dermatology" aria-pressed="false">Dermatology</button>
+    </div></div>
+    <div class="chart-card" id="embed-figure-card">
+      <img id="embed-figure-img" src="assets/figures/embed_ophthalmology.png" alt="2D t-SNE projection of ophthalmology image embeddings, colored by group" style="width:100%;border-radius:4px">
+    </div>
+    <figcaption id="embed-figure-caption">Ophthalmology: all four groups form visually distinct clusters.</figcaption>
+
+    <h3>Per-image diagnostics</h3>
+    <p class="note">Real per-image score exports (seed 42), dermatology on the melanoma split reported in Tables 1&ndash;3.</p>
+    <div class="toggles"><div class="toggle-group" id="diag-tabs">
+      <button type="button" data-fig="1_score_distributions" aria-pressed="true">Score distributions</button>
+      <button type="button" data-fig="2_visual_vocab_scatter" aria-pressed="false">Visual vs. vocab</button>
+      <button type="button" data-fig="3_roc_curves" aria-pressed="false">ROC</button>
+      <button type="button" data-fig="4_pr_curves" aria-pressed="false">PR</button>
+      <button type="button" data-fig="5_component_contribution" aria-pressed="false">Component share</button>
+      <button type="button" data-fig="6_ksrel_sweep" aria-pressed="false">k sweep</button>
+      <button type="button" data-fig="7_lambda_sweep" aria-pressed="false">&lambda; sweep</button>
+      <button type="button" data-fig="8_paired_differences" aria-pressed="false">Paired &Delta;</button>
+    </div></div>
+    <div class="chart-card" id="diag-figure-card">
+      <img id="diag-figure-img" src="assets/figures/diag/1_score_distributions.png" alt="ID vs semantic-shift score distributions, both benchmarks" style="width:100%;border-radius:4px">
+    </div>
+    <figcaption id="diag-figure-caption"></figcaption>
+  </section>
+
+  <section id="ablation">
+    <h2><span class="num">7</span>Ablation</h2>
+    <div class="section-title">What each component actually contributes</div>
+    <h3>Component ladder &mdash; semantic-shift AUROC, 5-seed mean</h3>
+    <span class="prov measured">Measured</span>
+    <div class="chart-card"><canvas id="ladder-chart"></canvas></div>
+    <p class="note">On ophthalmology, both branches help (RNCD +8.06pp, vocabulary +3.58pp further). On dermatology, RNCD costs &minus;1.37pp but the vocabulary contributes +15.09pp &mdash; the gain comes almost entirely from language, not geometry.</p>
+  </section>
+
+  <section id="faq">
+    <h2><span class="num">8</span>FAQ</h2>
+    <div class="section-title">Common questions, answered plainly</div>
+    <div id="qa-list"></div>
+  </section>
+
+  <section id="limits">
+    <h2><span class="num">9</span>Limits &amp; hypotheses</h2>
+    <div class="section-title">Where dermatology semantic shift falls short</div>
+    <div class="takeaway"><div class="tk-label">Takeaway</div><p>On dermatology semantic shift, SCOUT ranks third behind TANL and ANTS. Its advantage is covariate and far-OOD shift, where it leads every baseline.</p></div>
+    <div class="tablewrap">
+      <table>
+        <caption>SCOUT vs. the two methods that beat it on dermatology semantic shift</caption>
+        <thead><tr><th>Method</th><th>Semantic AUROC</th><th>Semantic AUPR</th><th>Semantic FPR95</th></tr></thead>
+        <tbody>
+          <tr><td>TANL</td><td class="win">81.71&plusmn;0.77</td><td class="win">79.57&plusmn;0.92</td><td class="win">64.38&plusmn;2.86</td></tr>
+          <tr><td>ANTS</td><td class="win">77.77&plusmn;1.05</td><td class="win">73.51&plusmn;1.58</td><td class="win">70.00&plusmn;3.38</td></tr>
+          <tr class="ours"><td>SCOUT</td><td>75.14&plusmn;2.33</td><td>72.17&plusmn;3.32</td><td>74.48&plusmn;3.08</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">RNCD alone (visual-neighborhood score) is 60.05% on dermatology semantic shift &mdash; below plain kNN (61.42%), a &minus;1.37pp change. The clinical vocabulary adds +15.09pp over RNCD to reach SCOUT's 75.14%. On dermatology covariate shift, SCOUT (96.83%) is marginally below kNN alone (97.26%).</p>
+    <p>The paper's own explanation, stated as a hypothesis rather than a settled finding:</p>
+    <div class="hyp">
+      <div class="hyp-head"><span class="hyp-id">Hypothesis</span><span class="hyp-status">Untested beyond the embedding plot above</span></div>
+      <dl>
+        <dt>Claim</dt><dd>Under dermatology semantic shift, melanoma images may overlap with the nevus embedding space because embeddings capture imaging style more than lesion type. This limits kNN and RNCD detection, while the small vocabulary retains much of the signal.</dd>
+        <dt>Supporting evidence</dt><dd>The embedding projection in &sect;6 shows exactly this overlap for dermatology but not ophthalmology; Table 3's ablation shows RNCD contributing negatively on dermatology (&minus;1.37pp) but positively on ophthalmology (+8.06pp).</dd>
+        <dt>Secondary claim</dt><dd>The max rule may further dilute the vocabulary's signal due to the visual score's heavier ID tail, explaining SCOUT's lower covariate AUROC than kNN alone (96.83% vs. 97.26%).</dd>
+      </dl>
+    </div>
+  </section>
+
+  <footer>SCOUT &middot; ISBI submission companion &middot; every number on this page traces to Tables 1&ndash;3 of the paper or to a real per-image export from the evaluation set.</footer>
+
+</main>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
