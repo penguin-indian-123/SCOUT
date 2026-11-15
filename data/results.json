@@ -1,0 +1,90 @@
+{
+  "protocol": {
+    "seeds": [42, 1, 7, 123, 2024],
+    "split": "5 random splits/seeds, as reported in the paper",
+    "k": 20,
+    "lambda": 1.0,
+    "citation": "SCOUT: Scoring with Clinical Vocabulary and Neighbor Distance for OOD Detection in Medical Vision-Language Models (ISBI submission)",
+    "composition_note": "Dermatology ID = ISIC 2019 melanocytic nevi (n=300), semantic shift = ISIC 2019 melanoma (n=300), covariate shift = PAD-UFES-20 (n=300), far-OOD = ImageNet-1k val (n=300) — exactly as stated in the paper's Datasets and Backbones section. All reported numbers below are verified exact matches to the paper's own Tables 1–3."
+  },
+  "benchmarks": {
+    "ophthalmology": {
+      "backbone": "FLAIR (ResNet-50 image encoder, Bio_ClinicalBERT text encoder, 512-d shared space)",
+      "id": "FIVES normal + diabetic retinopathy fundus images (n=300)",
+      "semantic": "FIVES AMD + glaucoma images (n=300)",
+      "covariate": "DeepDRiD ultra-widefield images (n=150)",
+      "far_ood": "ImageNet-1k validation images (n=150)"
+    },
+    "dermatology": {
+      "backbone": "BiomedCLIP (ViT-B/16 image encoder, PubMedBERT text encoder)",
+      "id": "ISIC 2019 melanocytic nevi (n=300)",
+      "semantic": "ISIC 2019 melanoma (n=300)",
+      "covariate": "PAD-UFES-20 smartphone clinical images (n=300)",
+      "far_ood": "ImageNet-1k validation images (n=300)"
+    }
+  },
+  "table1": {
+    "ophthalmology": {
+      "kNN":                    { "semantic": {"AUROC":[77.84,1.39], "AUPR":[79.20,2.20], "FPR95":[61.90,0.42]}, "covariate": {"AUROC":[99.92,0.06], "AUPR":[99.87,0.10], "FPR95":[0.00,0.00]}, "far_ood": {"AUROC":[99.95,0.04], "AUPR":[99.90,0.07], "FPR95":[0.00,0.00]} },
+      "SCOUT (generic)":        { "semantic": {"AUROC":[87.66,0.77], "AUPR":[87.81,0.84], "FPR95":[47.52,2.65]}, "covariate": {"AUROC":[99.60,0.32], "AUPR":[99.55,0.29], "FPR95":[0.00,0.00]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[100.00,0.00], "FPR95":[0.00,0.00]} },
+      "SCOUT (eval-informed)":  { "semantic": {"AUROC":[89.48,0.43], "AUPR":[89.49,0.50], "FPR95":[39.05,1.44]}, "covariate": {"AUROC":[99.89,0.08], "AUPR":[99.83,0.12], "FPR95":[0.00,0.00]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[99.99,0.01], "FPR95":[0.00,0.00]} }
+    },
+    "dermatology": {
+      "kNN":                    { "semantic": {"AUROC":[61.42,2.52], "AUPR":[55.50,1.66], "FPR95":[76.48,5.37]}, "covariate": {"AUROC":[97.26,0.35], "AUPR":[96.62,0.53], "FPR95":[10.19,1.26]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[100.00,0.00], "FPR95":[0.00,0.00]} },
+      "SCOUT (generic)":        { "semantic": {"AUROC":[65.64,2.43], "AUPR":[61.72,2.95], "FPR95":[80.76,2.65]}, "covariate": {"AUROC":[97.89,0.33], "AUPR":[97.77,0.51], "FPR95":[8.00,1.14]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[100.00,0.00], "FPR95":[0.00,0.00]} },
+      "SCOUT (eval-informed)":  { "semantic": {"AUROC":[75.14,2.33], "AUPR":[72.17,3.32], "FPR95":[74.48,3.08]}, "covariate": {"AUROC":[96.83,0.34], "AUPR":[96.37,0.35], "FPR95":[12.38,1.68]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[100.00,0.00], "FPR95":[0.00,0.00]} }
+    }
+  },
+  "table2": {
+    "ophthalmology": {
+      "MCM":    { "cite": "NeurIPS'22", "mean_auroc": 79.97, "semantic": {"AUROC":[75.09,1.17], "AUPR":[74.58,1.56], "FPR95":[78.19,1.52]}, "covariate": {"AUROC":[81.71,2.40], "AUPR":[69.64,1.74], "FPR95":[68.48,8.34]}, "far_ood": {"AUROC":[83.12,1.40], "AUPR":[68.51,1.44], "FPR95":[52.95,3.06]} },
+      "PROTON": { "cite": "MICCAI'26", "mean_auroc": 94.07, "semantic": {"AUROC":[88.02,0.63], "AUPR":[86.46,0.72], "FPR95":[38.48,2.28]}, "covariate": {"AUROC":[97.67,0.32], "AUPR":[95.29,0.60], "FPR95":[10.48,1.68]}, "far_ood": {"AUROC":[96.53,0.47], "AUPR":[92.59,0.93], "FPR95":[12.48,3.09]} },
+      "TAG":    { "cite": "ECCV'24", "mean_auroc": 76.40, "semantic": {"AUROC":[76.33,1.21], "AUPR":[76.76,1.39], "FPR95":[75.81,1.39]}, "covariate": {"AUROC":[71.11,2.09], "AUPR":[55.46,1.10], "FPR95":[90.95,2.74]}, "far_ood": {"AUROC":[81.75,1.13], "AUPR":[59.66,1.76], "FPR95":[48.86,5.11]} },
+      "ANTS":   { "cite": "CVPR'26", "mean_auroc": 71.60, "semantic": {"AUROC":[49.89,1.97], "AUPR":[52.96,2.26], "FPR95":[99.71,0.24]}, "covariate": {"AUROC":[88.86,1.07], "AUPR":[78.49,2.40], "FPR95":[36.48,4.39]}, "far_ood": {"AUROC":[76.05,1.08], "AUPR":[50.40,2.04], "FPR95":[52.76,2.20]} },
+      "TANL":   { "cite": "CVPR'26", "mean_auroc": 94.97, "semantic": {"AUROC":[85.67,1.08], "AUPR":[82.63,1.24], "FPR95":[41.53,3.26]}, "covariate": {"AUROC":[99.88,0.07], "AUPR":[99.79,0.11], "FPR95":[0.29,0.24]}, "far_ood": {"AUROC":[99.37,0.16], "AUPR":[98.58,0.39], "FPR95":[2.66,0.57]} },
+      "SCOUT":  { "cite": null, "mean_auroc": 96.46, "semantic": {"AUROC":[89.48,0.43], "AUPR":[89.49,0.50], "FPR95":[39.05,1.44]}, "covariate": {"AUROC":[99.89,0.08], "AUPR":[99.83,0.12], "FPR95":[0.00,0.00]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[99.99,0.01], "FPR95":[0.00,0.00]} }
+    },
+    "dermatology": {
+      "MCM":    { "cite": "NeurIPS'22", "mean_auroc": 43.40, "semantic": {"AUROC":[42.19,1.62], "AUPR":[45.28,1.22], "FPR95":[98.48,0.56]}, "covariate": {"AUROC":[50.36,1.08], "AUPR":[51.20,0.53], "FPR95":[97.71,0.36]}, "far_ood": {"AUROC":[37.64,0.88], "AUPR":[43.85,0.48], "FPR95":[99.52,0.00]} },
+      "PROTON": { "cite": "MICCAI'26", "mean_auroc": 64.20, "semantic": {"AUROC":[36.69,5.30], "AUPR":[42.89,2.67], "FPR95":[97.14,3.34]}, "covariate": {"AUROC":[72.18,2.35], "AUPR":[67.19,1.65], "FPR95":[60.48,7.14]}, "far_ood": {"AUROC":[83.73,1.96], "AUPR":[79.79,2.03], "FPR95":[37.90,5.82]} },
+      "TAG":    { "cite": "ECCV'24", "mean_auroc": 26.97, "semantic": {"AUROC":[34.27,1.83], "AUPR":[40.37,0.90], "FPR95":[99.14,0.35]}, "covariate": {"AUROC":[10.25,0.46], "AUPR":[32.68,0.26], "FPR95":[100.00,0.00]}, "far_ood": {"AUROC":[36.40,2.13], "AUPR":[43.09,1.46], "FPR95":[99.90,0.19]} },
+      "ANTS":   { "cite": "CVPR'26", "mean_auroc": 84.22, "semantic": {"AUROC":[77.77,1.05], "AUPR":[73.51,1.58], "FPR95":[70.00,3.38]}, "covariate": {"AUROC":[86.70,0.33], "AUPR":[87.77,0.49], "FPR95":[58.76,3.40]}, "far_ood": {"AUROC":[88.19,0.92], "AUPR":[87.89,1.26], "FPR95":[48.67,2.58]} },
+      "TANL":   { "cite": "CVPR'26", "mean_auroc": 80.25, "semantic": {"AUROC":[81.71,0.77], "AUPR":[79.57,0.92], "FPR95":[64.38,2.86]}, "covariate": {"AUROC":[71.40,0.72], "AUPR":[74.00,0.77], "FPR95":[95.71,1.60]}, "far_ood": {"AUROC":[87.64,0.62], "AUPR":[87.47,0.73], "FPR95":[49.91,1.60]} },
+      "SCOUT":  { "cite": null, "mean_auroc": 90.66, "semantic": {"AUROC":[75.14,2.33], "AUPR":[72.17,3.32], "FPR95":[74.48,3.08]}, "covariate": {"AUROC":[96.83,0.34], "AUPR":[96.37,0.35], "FPR95":[12.38,1.68]}, "far_ood": {"AUROC":[100.00,0.00], "AUPR":[100.00,0.00], "FPR95":[0.00,0.00]} }
+    }
+  },
+  "table3_ablation": {
+    "rows": [
+      { "method": "kNN distance", "ophthalmology": 77.84, "dermatology": 61.42 },
+      { "method": "Visual-neighborhood score (RNCD)", "ophthalmology": 85.90, "dermatology": 60.05 },
+      { "method": "SCOUT (generic vocabulary)", "ophthalmology": 87.66, "dermatology": 65.64 },
+      { "method": "SCOUT (evaluation-informed vocabulary)", "ophthalmology": 89.48, "dermatology": 75.14 }
+    ]
+  },
+  "vocabularies": {
+    "ophthalmology": {
+      "known": ["microaneurysm", "hard exudate", "cotton wool spot", "dot and blot hemorrhage", "retinal neovascularization", "macular edema", "venous beading", "diabetic retinal hemorrhage", "normal healthy fundus", "clear optic disc with no pathology"],
+      "unknown": ["drusen deposits", "geographic atrophy", "choroidal neovascularization", "retinal pigment epithelium detachment", "optic disc cupping", "retinal nerve fiber layer thinning", "optic nerve pallor", "peripapillary atrophy", "age-related macular degeneration", "glaucomatous angle closure"]
+    },
+    "dermatology": {
+      "known": ["symmetric pigment network", "regular dots and globules", "benign melanocytic nevus pattern", "uniform coloration", "cobblestone pattern", "well-circumscribed border", "homogeneous brown pigmentation", "stable long-standing lesion", "single predominant color", "regular reticular pattern"],
+      "unknown": ["atypical pigment network", "blue-white veil", "irregular streaks", "regression structures", "asymmetric pigmentation", "malignant melanoma pattern", "irregular dots and globules", "multicomponent pattern", "ulceration", "rapidly evolving lesion"]
+    }
+  },
+  "qa": [
+    { "q": "Why is this framed as OOD detection instead of just adding more classes to the classifier?", "a": "Medical VLMs are deployed against an open world of conditions, camera types, and non-medical inputs that can never be fully enumerated as training classes. A detector that flags \"I don't know this\" without retraining is what lets a frozen, already-validated VLM stay safe to deploy as new conditions and acquisition settings appear." },
+    { "q": "Why standardize on ID-dev data only, instead of calibrating with some OOD examples?", "a": "Calibrating against real OOD examples would bake in knowledge of exactly which shifts the detector will face at deployment — unrealistic, since the point of OOD detection is catching shifts that were not anticipated. Z-scoring against only the ID development distribution keeps calibration decision-free with respect to any OOD category." },
+    { "q": "Is the clinical vocabulary doing the same job as the model's existing class prompts?", "a": "No — the class-level prompts are what the VLM was already trained to match (e.g. \"normal\" and \"diabetic retinopathy\" for FLAIR). The finding vocabulary names specific clinical signs (e.g. \"drusen deposits\", \"optic disc cupping\") that the model's contrastive training never explicitly aligned to any image, even though the underlying pretraining corpus may have included these words in passing." },
+    { "q": "What does \"evaluation-informed\" vocabulary actually mean, and is that a form of label leakage?", "a": "The known/unknown term pairs name findings associated with the specific ID and semantic-shift classes being evaluated (e.g. AMD/glaucoma terms for the ophthalmology unseen set). This is zero-shot in the sense that the model was never trained to align its image embeddings to these exact words — but choosing the term pair with knowledge of which diseases will appear at evaluation time is an informed design choice, not a blind one. The paper reports a generic-vocabulary variant specifically to show how much of the gain depends on this choice: it is smaller but still positive on both benchmarks." },
+    { "q": "Why does SCOUT lose to TANL and ANTS on dermatology semantic shift specifically?", "a": "The paper's own hypothesis (Sec. 3): under this shift, BCC/AK-style lesion changes may be dominated by imaging style rather than lesion-specific visual cues in BiomedCLIP's embedding space, limiting both kNN and RNCD. The small 10-term vocabulary retains most of the available signal, but the max-rule fusion can be diluted by the visual branch's heavier ID tail — explaining why SCOUT (96.83% covariate AUROC) sits marginally below plain kNN (97.26%) there. These remain hypotheses pending further diagnostic tests." },
+    { "q": "Why use a fixed max(·,·) fusion instead of a learned weighting of the two branches?", "a": "A learned weight would need either OOD labels or a validation shift to tune against — both of which defeat the purpose of a detector meant to generalize to unanticipated shifts. The max rule requires only that at least one branch be confident, which keeps the method training-free end to end." },
+    { "q": "Does RNCD help or hurt, and where?", "a": "RNCD (visual-neighborhood score) improves ophthalmology semantic-shift AUROC by +8.06pp over plain kNN, but costs −1.37pp on dermatology. The relative-neighborhood correction helps when genuinely isolated points exist in sparse regions (ophthalmology); on dermatology, where ID and semantic-shift embeddings overlap more, the correction does not have a clean separation to exploit." },
+    { "q": "Why ImageNet specifically for far-OOD, rather than a different natural-image benchmark?", "a": "ImageNet-1k validation images are a standard, widely available far-OOD reference containing no medical imagery — using it keeps the far-OOD condition maximally distinct from both in-distribution domains and lets both branches react to genuinely out-of-domain content rather than a different medical modality." },
+    { "q": "Why does covariate and far-OOD AUROC saturate near 100% for every method shown in Table 1?", "a": "Covariate shift here (ultra-widefield imaging, smartphone photos) and far-OOD (natural images) both produce embeddings that sit far outside the ID cluster in absolute terms — even plain kNN distance separates them almost perfectly. The harder, more informative comparison is semantic shift, which is why the paper's analysis focuses there." },
+    { "q": "What would make this detector fail in practice?", "a": "A semantic shift whose embedding overlaps heavily with ID classes (as dermatology's NV/MEL does) and that is not well-described by a short, pre-chosen clinical vocabulary would stress both branches at once. A systematic change in imaging hardware not represented by the covariate-shift set, or an evaluation-informed vocabulary that happens to be poorly matched to the clinical terms actually distinguishing the real unseen disease, would also degrade performance." }
+  ],
+  "ablation_delta": {
+    "ophthalmology": { "rncd_vs_knn": 8.06, "vocab_vs_rncd": 3.58, "generic_vocab_gap": 1.82 },
+    "dermatology":   { "rncd_vs_knn": -1.37, "vocab_vs_rncd": 15.09, "generic_vocab_gap": 9.50 }
+  }
+}
