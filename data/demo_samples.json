@@ -1,0 +1,302 @@
+[
+ {
+  "benchmark": "ophthalmology",
+  "group": "id",
+  "image_idx": 179,
+  "z_vis": -0.46,
+  "z_vocab": 0.25,
+  "fused": 0.25,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "semantic",
+  "image_idx": 1117,
+  "z_vis": 0.72,
+  "z_vocab": -1.73,
+  "fused": 0.72,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "far_ood",
+  "image_idx": 778,
+  "z_vis": 6.71,
+  "z_vocab": 2.27,
+  "fused": 6.71,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "far_ood",
+  "image_idx": 567,
+  "z_vis": 12.48,
+  "z_vocab": 1.81,
+  "fused": 12.48,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "semantic",
+  "image_idx": 983,
+  "z_vis": -0.11,
+  "z_vocab": -0.96,
+  "fused": -0.11,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "id",
+  "image_idx": 874,
+  "z_vis": -0.53,
+  "z_vocab": 0.06,
+  "fused": 0.06,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "id",
+  "image_idx": 747,
+  "z_vis": 1.36,
+  "z_vocab": 0.72,
+  "fused": 1.36,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "covariate",
+  "image_idx": 115,
+  "z_vis": 1.7,
+  "z_vocab": 1.0,
+  "fused": 1.7,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "far_ood",
+  "image_idx": 543,
+  "z_vis": 12.3,
+  "z_vocab": 1.26,
+  "fused": 12.3,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "covariate",
+  "image_idx": 644,
+  "z_vis": 5.65,
+  "z_vocab": 3.85,
+  "fused": 5.65,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "covariate",
+  "image_idx": 646,
+  "z_vis": 6.59,
+  "z_vocab": 4.46,
+  "fused": 6.59,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "covariate",
+  "image_idx": 258,
+  "z_vis": 3.46,
+  "z_vocab": 0.31,
+  "fused": 3.46,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "far_ood",
+  "image_idx": 512,
+  "z_vis": 13.45,
+  "z_vocab": 0.2,
+  "fused": 13.45,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "id",
+  "image_idx": 848,
+  "z_vis": -0.85,
+  "z_vocab": 0.78,
+  "fused": 0.78,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "id",
+  "image_idx": 197,
+  "z_vis": -0.55,
+  "z_vocab": -0.61,
+  "fused": -0.55,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "id",
+  "image_idx": 235,
+  "z_vis": 0.01,
+  "z_vocab": -1.18,
+  "fused": 0.01,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "semantic",
+  "image_idx": 940,
+  "z_vis": 0.54,
+  "z_vocab": 0.61,
+  "fused": 0.61,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "semantic",
+  "image_idx": 374,
+  "z_vis": 0.66,
+  "z_vocab": 1.82,
+  "fused": 1.82,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "semantic",
+  "image_idx": 513,
+  "z_vis": 1.53,
+  "z_vocab": 2.14,
+  "fused": 2.14,
+  "flagged": true,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "covariate",
+  "image_idx": 49,
+  "z_vis": 2.45,
+  "z_vocab": 0.87,
+  "fused": 2.45,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "covariate",
+  "image_idx": 729,
+  "z_vis": 5.3,
+  "z_vocab": 4.42,
+  "fused": 5.3,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "far_ood",
+  "image_idx": 841,
+  "z_vis": 5.6,
+  "z_vocab": 2.79,
+  "fused": 5.6,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "semantic",
+  "image_idx": 1079,
+  "z_vis": -0.15,
+  "z_vocab": 0.12,
+  "fused": 0.12,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "semantic",
+  "image_idx": 523,
+  "z_vis": 5.54,
+  "z_vocab": 2.65,
+  "fused": 5.54,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "id",
+  "image_idx": 1,
+  "z_vis": 1.16,
+  "z_vocab": 2.03,
+  "fused": 2.03,
+  "flagged": false,
+  "dominant": "vocab"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "covariate",
+  "image_idx": 189,
+  "z_vis": 4.83,
+  "z_vocab": 3.77,
+  "fused": 4.83,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "covariate",
+  "image_idx": 716,
+  "z_vis": 5.95,
+  "z_vocab": 4.71,
+  "fused": 5.95,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "dermatology",
+  "group": "id",
+  "image_idx": 860,
+  "z_vis": -0.77,
+  "z_vocab": -0.97,
+  "fused": -0.77,
+  "flagged": false,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "far_ood",
+  "image_idx": 875,
+  "z_vis": 6.58,
+  "z_vocab": 3.06,
+  "fused": 6.58,
+  "flagged": true,
+  "dominant": "visual"
+ },
+ {
+  "benchmark": "ophthalmology",
+  "group": "semantic",
+  "image_idx": 553,
+  "z_vis": 5.47,
+  "z_vocab": 2.53,
+  "fused": 5.47,
+  "flagged": true,
+  "dominant": "visual"
+ }
+]
